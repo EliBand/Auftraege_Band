@@ -1,0 +1,1 @@
+{"FirstName":"Elias","LastName":"Styner","Email":"elias.styner@gmail.com","Picture":null,"Address":{"Street":"Landenhofweg","StreetNumber":"1","ZipCode":"5035","City":"Unterentfelden","Country":"Schweiz"}}
