@@ -1,20 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Data;
 using Newtonsoft.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
 using System.IO;
-using iTextSharp;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
 using System.IO.Packaging;
-using System.Xml.Linq;
-using System.Reflection;
 using System.Windows.Media.Imaging;
 using System.Windows.Media;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
+using System.Reflection;
 //using System.Drawing;
 
 namespace Auftrag1
@@ -44,7 +44,8 @@ namespace Auftrag1
 
             if (file.ShowDialog() == true)
             {
-
+                currentPerson.Picture = 
+                image.Source = new BitmapImage(new Uri(file.FileName));
             }
         }
 
@@ -78,7 +79,7 @@ namespace Auftrag1
                     {
                         // Save as Json file
                         Address currentAddress = new Address(tb_address_street.Text, tb_address_snr.Text, tb_address_zip.Text, tb_address_city.Text, tb_address_country.Text);
-                        currentPerson = new Person(tb_firstname.Text, tb_lastname.Text, currentAddress, tb_email.Text);
+                        currentPerson = new Person(tb_firstname.Text, tb_lastname.Text, currentAddress, tb_email.Text, image.Source);
                         string json = JsonConvert.SerializeObject(currentPerson);
                         string filename = currentPerson.FirstName + currentPerson.LastName;
 
@@ -88,24 +89,9 @@ namespace Auftrag1
                         // Save as PDF
                         if (asPDF)
                         {
-                            // save the card part of the WPF window as an image
-                            string filepath = path_images + filename + ".png";
-                            Extensions.SnapShotPNG(grd_card, filepath, 1);
-
-                            // Create a pdf file
-                            MemoryStream lMemoryStream = new MemoryStream();
-                            Package package = Package.Open(lMemoryStream, FileMode.Create);
-
-                            FileStream fs = new FileStream(path_pdfSaveFiles + filename + ".pdf", FileMode.Create);
-                            Document pdf = new Document(PageSize.A4, 25, 25, 30, 30);
-                            PdfWriter writer = PdfWriter.GetInstance(pdf, fs);
                             
-                            pdf.Open();
-                            pdf.AddTitle(currentPerson.FirstName + currentPerson.LastName);
-                            // add previously created image to pdf file
-                            iTextSharp.text.Image image = iTextSharp.text.Image.GetInstance(filepath);
-                            pdf.Add(image);
-                            pdf.Close();
+                            saveSnapshotToPDF(filename + "Image");
+                            buildPDF(filename, currentPerson);
                         }
                     }
                 }
@@ -122,6 +108,90 @@ namespace Auftrag1
             {
                 MessageBox.Show(errormessage, "Achtung", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+        public void saveSnapshotToPDF(string filename)
+        {
+            Document pdf = new Document(PageSize.A4, 25, 25, 30, 30);
+
+            MemoryStream lMemoryStream = new MemoryStream();
+            Package package = Package.Open(lMemoryStream, FileMode.Create);
+            FileStream fs = new FileStream(path_pdfSaveFiles + filename + ".pdf", FileMode.Create);
+            PdfWriter writer = PdfWriter.GetInstance(pdf, fs);
+
+            writer.Open();
+            pdf.Open();
+            pdf.AddTitle(filename);
+
+            // save the card part of the WPF window as an image
+            string filepath = path_images + filename + ".png";
+            Extensions.SnapShotPNG(grd_card, filepath, 1);
+
+            // add previously created image to pdf file
+            iTextSharp.text.Image image = iTextSharp.text.Image.GetInstance(filepath);
+            pdf.Add(image);
+            
+            pdf.Close();
+        }
+        public void buildPDF(string filename, Person data)
+        {
+            // Create a pdf file
+            Document pdf = new Document(PageSize.A4, 25, 25, 30, 30);
+
+            MemoryStream lMemoryStream = new MemoryStream();
+            Package package = Package.Open(lMemoryStream, FileMode.Create);
+            FileStream fs = new FileStream(path_pdfSaveFiles + filename + ".pdf", FileMode.Create);
+            PdfWriter writer = PdfWriter.GetInstance(pdf, fs);
+
+            writer.Open();
+            pdf.Open();
+            pdf.AddTitle(filename);
+
+            // Fonts
+            BaseFont f_a = BaseFont.CreateFont("c:\\windows\\fonts\\Arial.ttf", BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
+
+            PdfContentByte cb = writer.DirectContent;
+            cb.BeginText();
+            int fontsize = 20;
+            int gap = 3;
+            cb.SetFontAndSize(f_a, fontsize);
+
+            string picPath = data.Picture.ToString();
+            int x = 30;
+            int y = 820;
+
+            PropertyInfo[] properties = typeof(Person).GetProperties();
+            foreach (PropertyInfo property in properties)
+            {
+                y -= fontsize - gap;
+                if (property.PropertyType == data.Address.GetType())
+                {
+                    PropertyInfo[] address = typeof(Address).GetProperties();
+                    foreach (PropertyInfo ap in address)
+                    {
+                        y -= fontsize - gap;
+                        cb.SetTextMatrix(x, y);
+                        cb.ShowText(ap.GetValue(data.Address).ToString());
+                    }
+                }
+                else if (property.PropertyType == typeof(ImageSource))
+                {
+                    // load Image if exists
+                    if (true)
+                    {
+                        iTextSharp.text.Image img = iTextSharp.text.Image.GetInstance(picPath);
+                        img.ScaleAbsolute(130, 130);
+                        img.SetAbsolutePosition(400, 680);
+                        cb.AddImage(img);
+                    }
+                }
+                else
+                {
+                    cb.SetTextMatrix(x, y);
+                    cb.ShowText(property.GetValue(data).ToString());
+                }
+            }
+            cb.EndText();
+            pdf.Close();
         }
 
         public enum RegexType
@@ -159,8 +229,22 @@ namespace Auftrag1
             file.InitialDirectory = Path.GetFullPath((new Uri(absolute_path)).LocalPath);
             if (file.ShowDialog() == true)
             {
-                currentPerson = JsonConvert.DeserializeObject<Person>(File.ReadAllText(file.FileName));
-                fillFormFromPerson(currentPerson);
+                if (file.FileName.EndsWith(".txt"))
+                {
+                    try
+                    {
+                        currentPerson = JsonConvert.DeserializeObject<Person>(File.ReadAllText(file.FileName));
+                        fillFormFromPerson(currentPerson);
+                    }
+                    catch (Exception)
+                    {
+                        throw;
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Die gewählte Datei entspricht nicht dem erwarteten Format.");
+                }
             }
         }
         public void fillFormFromPerson(Person person)
@@ -173,6 +257,7 @@ namespace Auftrag1
             tb_address_zip.Text = person.Address.ZipCode;
             tb_address_city.Text = person.Address.City;
             tb_address_country.Text = person.Address.Country;
+            image.Source = person.Picture;
         }
 
         private void btn_new_Click(object sender, RoutedEventArgs e)
@@ -189,6 +274,7 @@ namespace Auftrag1
             tb_address_zip.Text = 
             tb_address_city.Text = 
             tb_address_country.Text = "";
+            image.Source = new BitmapImage();
         }
     }
     public static class Extensions
@@ -212,7 +298,7 @@ namespace Auftrag1
                 using (drawingContext)
                 {
                     drawingContext.PushTransform(new ScaleTransform(zoom, zoom));
-                    drawingContext.DrawRectangle(sourceBrush, null, new Rect(new Point(0, 0), new Point(actualWidth, actualHeight)));
+                    drawingContext.DrawRectangle(sourceBrush, null, new Rect(new System.Windows.Point(0, 0), new System.Windows.Point(actualWidth, actualHeight)));
                 }
                 renderTarget.Render(drawingVisual);
 
@@ -228,24 +314,56 @@ namespace Auftrag1
                 MessageBox.Show(e.Message);
             }
         }
+        /// <summary>
+         /// Resize the image to the specified width and height.
+         /// </summary>
+         /// <param name="image">The image to resize.</param>
+         /// <param name="width">The width to resize to.</param>
+         /// <param name="height">The height to resize to.</param>
+         /// <returns>The resized image.</returns>
+        public static Bitmap ResizeImage(System.Drawing.Image image, int width, int height)
+        {
+            var destRect = new System.Drawing.Rectangle(0, 0, width, height);
+            var destImage = new Bitmap(width, height);
+
+            destImage.SetResolution(image.HorizontalResolution, image.VerticalResolution);
+
+            using (var graphics = Graphics.FromImage(destImage))
+            {
+                graphics.CompositingMode = CompositingMode.SourceCopy;
+                graphics.CompositingQuality = CompositingQuality.HighQuality;
+                graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                graphics.SmoothingMode = SmoothingMode.HighQuality;
+                graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
+                using (var wrapMode = new ImageAttributes())
+                {
+                    wrapMode.SetWrapMode(WrapMode.TileFlipXY);
+                    graphics.DrawImage(image, destRect, 0, 0, image.Width, image.Height, GraphicsUnit.Pixel, wrapMode);
+                }
+            }
+
+            return destImage;
+        }
     }
     public class Person
     {
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public string Email { get; set; }
-        public System.Drawing.Image Picture { get; set; }
+        public ImageSource Picture { get; set; }
         public Address Address { get; set; }
         public Person()
         {
 
         }
-        public Person(string firstname, string lastname, Address address, string email)
+        public Person(string firstname, string lastname, Address address, string email, ImageSource picture)
         {
             FirstName = firstname;
             LastName = lastname;
             Address = address;
             Email = email;
+            Picture = picture;
         }
     }
     public class Address

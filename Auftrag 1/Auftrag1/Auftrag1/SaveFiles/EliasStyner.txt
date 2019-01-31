@@ -1,1 +1,1 @@
-{"FirstName":"Elias","LastName":"Styner","Email":"elias.styner@gmail.com","Picture":null,"Address":{"Street":"Landenhofweg","StreetNumber":"1","ZipCode":"5035","City":"Unterentfelden","Country":"Schweiz"}}
+{"FirstName":"Elias","LastName":"Styner","Email":"elias.styner@gmail.com","Picture":"file:///C:/Users/elias.styner.INF/Documents/Aufträge_Band/Auftraege_Band/Auftrag 1/Auftrag1/Auftrag1/Images/Test.bmp","Address":{"Street":"Landenhofweg","StreetNumber":"1","ZipCode":"5035","City":"Unterentfelden","Country":"Schweiz"}}

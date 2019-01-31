@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:Auftrag1"
         xmlns:System="clr-namespace:System;assembly=mscorlib" x:Class="Auftrag1.MainWindow"
         mc:Ignorable="d"
-        Title="MainWindow" Height="324" Width="442" ResizeMode="NoResize" WindowStyle="ThreeDBorderWindow">
+        Title="MainWindow" Height="342" Width="462" ResizeMode="NoResize" WindowStyle="ThreeDBorderWindow">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <local:TextInputToVisibilityConverter x:Key="TextInputToVisibilityConverter" />
